@@ -18,6 +18,7 @@ from smartcard.CardMonitoring import CardMonitor
 from smartcard.System import readers
 from smartcard.util import toBytes, toHexString, PACK
 from smartcard.Exceptions import CardConnectionException
+from smartcard.CardConnectionObserver import ConsoleCardConnectionObserver
 
 
 def select_reader():
@@ -52,66 +53,29 @@ class APDUShell(cmd.Cmd):
     """
 
     def __init__(self):
-        if sys.version_info.major == 2:
-            cmd.Cmd.__init__(self, completekey=None)
-        else:
-            super(APDUShell, self).__init__(completekey=None)
+        super(APDUShell, self).__init__(completekey=None)
 
         self.reader = select_reader()
-        self.card = None
+        self._clear_context()
         self.connection = None
-        self.sel_obj = ''
-        self.atr = None
-        self.card_monitor = CardMonitor()
-        self.card_monitor.addObserver(self)
+        self.card_connection_observer = ConsoleCardConnectionObserver()
 
-    def _card_observer_update(self, observable, handlers):
+        CardMonitor().addObserver(self)
+
+    def update(self, observable, handlers):
         """CardObserver interface implementation"""
 
         addedcards, removedcards = handlers
 
         if self.card and self.card in removedcards:
             self._clear_connection()
+            self._clear_context()
 
         for card in addedcards:
             if str(card.reader) == str(self.reader):
                 self.card = card
                 self._set_up_connection()
                 break
-
-    def _card_connection_observer_update(self, card_connection, event):
-        """CardConnectionObserver interface implementation"""
-
-        if 'connect' == event.type:
-            message = 'Card inserted'
-
-        elif 'disconnect' == event.type:
-            message = 'Card removed'
-
-        elif 'command' == event.type:
-            message = '> ' + toHexString(event.args[0])
-
-        elif 'response' == event.type:
-            message = '< [{}]\n<  {:02X} {:02X}'.format(toHexString(event.args[0]), *event.args[1:])
-
-        else:
-            message = 'Unknown event type: {}'.format(event.type)
-
-        print(message)
-
-    def update(self, *args):
-        """Dispatch a call between CardObserver and CardConnectionObserver interfaces
-        based on type of arguments.
-        If nothing matches raise TypeError.
-        """
-        if issubclass(args[0].__class__, Observable) and isinstance(args[1], tuple):
-            return self._card_observer_update(*args)
-
-        elif issubclass(args[0].__class__, CardConnection) and isinstance(args[1], CardConnectionEvent):
-            return self._card_connection_observer_update(*args)
-
-        else:
-            raise TypeError('Can not dispatch a call due to incorrect arguments')
 
     def default(self, line):
         """Process all APDU"""
@@ -174,14 +138,21 @@ class APDUShell(cmd.Cmd):
         """Create & configure a new card connection"""
 
         self.connection = self.card.createConnection()
-        self.connection.addObserver(self)
+        self.connection.addObserver(self.card_connection_observer)
         self.connection.connect()
         self.atr = toHexString(self.connection.getATR(), PACK)
 
     def _clear_connection(self):
-        self.self_obj = ''
-        self.card = None
+        if not self.connection:
+            return
+
+        self.connection.deleteObserver(self.card_connection_observer)
+        self.connection.disconnect()
         self.connection = None
+
+    def _clear_context(self):
+        self.sel_obj = None
+        self.card = None
         self.atr = None
 
 
