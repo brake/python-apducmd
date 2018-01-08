@@ -1,6 +1,6 @@
 ApduCmd
 =======
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg?style=flat)](https://opensource.org/licenses/MIT) [![GitHub version](https://badge.fury.io/gh/brake%2Fpython-apducmd.svg)](https://badge.fury.io/gh/brake%2Fpython-apducmd)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg?style=flat)](https://opensource.org/licenses/MIT) [![GitHub version](https://badge.fury.io/gh/brake%2Fpython-apducmd.svg)](https://badge.fury.io/gh/brake%2Fpython-apducmd) ![Python: 3.6](https://img.shields.io/badge/Python-3.6-green.svg)
 
 **SmartCard command shell** (Python) with ability to execute APDU just like commands and view result as status word (SW) and output data on the screen.
 
